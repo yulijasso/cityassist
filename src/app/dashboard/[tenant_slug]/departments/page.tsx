@@ -39,6 +39,27 @@ export default function DepartmentsPage() {
   const [newKeyword, setNewKeyword] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDept, setNewDept] = useState({ name: "", contactEmail: "", contactPhone: "" });
+  const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
+  const [editErrors, setEditErrors] = useState<{ email?: string; phone?: string }>({});
+
+  const validateEmail = (email: string) => {
+    if (!email.trim()) return undefined;
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email) ? undefined : "Invalid email format";
+  };
+
+  const validatePhone = (phone: string) => {
+    if (!phone.trim()) return undefined;
+    // Only allow digits, spaces, hyphens, parentheses, dots, and + prefix
+    if (!/^[\d\s\-\(\)\+\.]+$/.test(phone.trim())) return "Only numbers, spaces, hyphens, and parentheses allowed";
+    // + only allowed at the start
+    if (phone.includes("+") && phone.trim().indexOf("+") !== 0) return "'+' only allowed at the start";
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length === 0) return "Enter a valid phone number";
+    if (digits.length < 10) return `Too few digits (${digits.length}/10 minimum)`;
+    if (digits.length > 15) return `Too many digits (${digits.length}/15 maximum)`;
+    return undefined;
+  };
 
   useEffect(() => {
     setTenantSlug(slug);
@@ -46,6 +67,11 @@ export default function DepartmentsPage() {
 
   const handleAdd = () => {
     if (!newDept.name.trim()) return;
+    const emailErr = validateEmail(newDept.contactEmail);
+    const phoneErr = validatePhone(newDept.contactPhone);
+    setErrors({ email: emailErr, phone: phoneErr });
+    if (emailErr || phoneErr) return;
+
     const dept: DepartmentConfig = {
       id: `dept-${Date.now()}`,
       name: newDept.name.trim(),
@@ -56,6 +82,7 @@ export default function DepartmentsPage() {
     };
     addDepartment(dept);
     setNewDept({ name: "", contactEmail: "", contactPhone: "" });
+    setErrors({});
     setShowAddForm(false);
     setEditingId(dept.id);
   };
@@ -111,22 +138,34 @@ export default function DepartmentsPage() {
               onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
-            <HStack>
-              <Input
-                size="sm"
-                placeholder="Contact email"
-                value={newDept.contactEmail}
-                onChange={(e) => setNewDept({ ...newDept, contactEmail: e.target.value })}
-              />
-              <Input
-                size="sm"
-                placeholder="Contact phone"
-                value={newDept.contactPhone}
-                onChange={(e) => setNewDept({ ...newDept, contactPhone: e.target.value })}
-              />
-            </HStack>
+            <Box>
+              <HStack>
+                <Box flex={1}>
+                  <Input
+                    size="sm"
+                    placeholder="Contact email"
+                    type="email"
+                    value={newDept.contactEmail}
+                    isInvalid={!!errors.email}
+                    onChange={(e) => { setNewDept({ ...newDept, contactEmail: e.target.value }); setErrors({ ...errors, email: validateEmail(e.target.value) }); }}
+                  />
+                  {errors.email && <Text fontSize="xs" color="red.500" mt={1}>{errors.email}</Text>}
+                </Box>
+                <Box flex={1}>
+                  <Input
+                    size="sm"
+                    placeholder="Contact phone"
+                    type="tel"
+                    value={newDept.contactPhone}
+                    isInvalid={!!errors.phone}
+                    onChange={(e) => { setNewDept({ ...newDept, contactPhone: e.target.value }); setErrors({ ...errors, phone: validatePhone(e.target.value) }); }}
+                  />
+                  {errors.phone && <Text fontSize="xs" color="red.500" mt={1}>{errors.phone}</Text>}
+                </Box>
+              </HStack>
+            </Box>
             <HStack justify="flex-end">
-              <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowAddForm(false); setErrors({}); }}>Cancel</Button>
               <Button size="sm" colorScheme="blue" onClick={handleAdd}>Create</Button>
             </HStack>
           </VStack>
@@ -182,9 +221,6 @@ export default function DepartmentsPage() {
                   </Box>
                 </HStack>
                 <HStack spacing={2}>
-                  <Badge colorScheme={dept.escalationEnabled ? "green" : "gray"} fontSize="10px">
-                    {dept.escalationEnabled ? "Escalation On" : "Escalation Off"}
-                  </Badge>
                   <IconButton
                     aria-label="Edit"
                     icon={<Icon as={isEditing ? FiCheck : FiEdit2} />}
@@ -253,28 +289,42 @@ export default function DepartmentsPage() {
                         Add
                       </Button>
                     </HStack>
-                    <HStack>
-                      <Input
-                        size="sm"
-                        placeholder="Email"
-                        value={dept.contactEmail}
-                        onChange={(e) => updateDepartment(dept.id, { contactEmail: e.target.value })}
-                      />
-                      <Input
-                        size="sm"
-                        placeholder="Phone"
-                        value={dept.contactPhone}
-                        onChange={(e) => updateDepartment(dept.id, { contactPhone: e.target.value })}
-                      />
+                    <HStack align="start">
+                      <Box flex={1}>
+                        <Input
+                          size="sm"
+                          placeholder="Email"
+                          type="email"
+                          value={dept.contactEmail}
+                          isInvalid={!!editErrors.email}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateDepartment(dept.id, { contactEmail: val });
+                            const err = validateEmail(val);
+                            setEditErrors((prev) => ({ ...prev, email: err }));
+                          }}
+                          onBlur={() => setEditErrors((prev) => ({ ...prev, email: validateEmail(dept.contactEmail) }))}
+                        />
+                        {editErrors.email && <Text fontSize="xs" color="red.500" mt={1}>{editErrors.email}</Text>}
+                      </Box>
+                      <Box flex={1}>
+                        <Input
+                          size="sm"
+                          placeholder="Phone"
+                          type="tel"
+                          value={dept.contactPhone}
+                          isInvalid={!!editErrors.phone}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateDepartment(dept.id, { contactPhone: val });
+                            const err = validatePhone(val);
+                            setEditErrors((prev) => ({ ...prev, phone: err }));
+                          }}
+                          onBlur={() => setEditErrors((prev) => ({ ...prev, phone: validatePhone(dept.contactPhone) }))}
+                        />
+                        {editErrors.phone && <Text fontSize="xs" color="red.500" mt={1}>{editErrors.phone}</Text>}
+                      </Box>
                     </HStack>
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      colorScheme={dept.escalationEnabled ? "red" : "green"}
-                      onClick={() => updateDepartment(dept.id, { escalationEnabled: !dept.escalationEnabled })}
-                    >
-                      {dept.escalationEnabled ? "Disable Escalation" : "Enable Escalation"}
-                    </Button>
                   </VStack>
                 </Box>
               )}
