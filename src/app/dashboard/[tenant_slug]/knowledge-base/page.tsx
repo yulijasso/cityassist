@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Box,
   Heading,
@@ -26,7 +26,8 @@ import {
   FiClock,
   FiBook,
 } from "react-icons/fi";
-import { DEPARTMENTS } from "@/lib/types";
+import { useParams } from "next/navigation";
+import { useDepartments } from "@/lib/department-store";
 
 interface Document {
   id: string;
@@ -56,11 +57,20 @@ const STATUS_CONFIG = {
 };
 
 export default function KnowledgeBasePage() {
+  const params = useParams();
+  const slug = params.tenant_slug as string;
+  const { departments, setTenantSlug } = useDepartments();
+  const deptNames = departments.map((d) => d.name);
+
+  useEffect(() => {
+    setTenantSlug(slug);
+  }, [slug, setTenantSlug]);
+
   const [documents, setDocuments] = useState<Document[]>(SEED_DOCS);
   const [faqs, setFaqs] = useState<FAQ[]>(SEED_FAQS);
   const [dragOver, setDragOver] = useState(false);
   const [showFaqForm, setShowFaqForm] = useState(false);
-  const [newFaq, setNewFaq] = useState({ question: "", answer: "", department: DEPARTMENTS[0] as string });
+  const [newFaq, setNewFaq] = useState({ question: "", answer: "", department: "" });
   const [filterDept, setFilterDept] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,7 +88,7 @@ export default function KnowledgeBasePage() {
 
     for (const file of validFiles) {
       const docId = `d-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const dept = filterDept !== "all" ? filterDept : DEPARTMENTS[0];
+      const dept = filterDept !== "all" ? filterDept : (deptNames[0] || "General");
 
       // Add as processing
       const newDoc: Document = {
@@ -140,7 +150,7 @@ export default function KnowledgeBasePage() {
       ...newFaq,
     };
     setFaqs((prev) => [...prev, faq]);
-    setNewFaq({ question: "", answer: "", department: DEPARTMENTS[0] });
+    setNewFaq({ question: "", answer: "", department: deptNames[0] || "" });
     setShowFaqForm(false);
   };
 
@@ -161,7 +171,7 @@ export default function KnowledgeBasePage() {
         </Box>
         <Select size="sm" w="200px" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
           <option value="all">All Departments</option>
-          {DEPARTMENTS.map((d) => (
+          {deptNames.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
         </Select>
@@ -284,7 +294,7 @@ export default function KnowledgeBasePage() {
                 value={newFaq.department}
                 onChange={(e) => setNewFaq({ ...newFaq, department: e.target.value })}
               >
-                {DEPARTMENTS.map((d) => (
+                {deptNames.map((d) => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </Select>

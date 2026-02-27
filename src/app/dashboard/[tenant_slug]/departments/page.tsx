@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Heading,
@@ -13,7 +13,6 @@ import {
   Badge,
   Flex,
   IconButton,
-  Divider,
 } from "@chakra-ui/react";
 import {
   FiUsers,
@@ -26,25 +25,26 @@ import {
   FiX,
   FiCheck,
 } from "react-icons/fi";
-interface DepartmentConfig {
-  id: string;
-  name: string;
-  contactEmail: string;
-  contactPhone: string;
-  keywords: string[];
-  escalationEnabled: boolean;
-}
-
-const SEED_DEPARTMENTS: DepartmentConfig[] = [];
+import { useParams } from "next/navigation";
+import { useDepartments } from "@/lib/department-store";
+import { DepartmentConfig } from "@/lib/types";
 
 export default function DepartmentsPage() {
-  const [departments, setDepartments] = useState<DepartmentConfig[]>(SEED_DEPARTMENTS);
+  const params = useParams();
+  const slug = params.tenant_slug as string;
+  const { departments, addDepartment, removeDepartment, updateDepartment, setTenantSlug } =
+    useDepartments();
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newKeyword, setNewKeyword] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDept, setNewDept] = useState({ name: "", contactEmail: "", contactPhone: "" });
 
-  const addDepartment = () => {
+  useEffect(() => {
+    setTenantSlug(slug);
+  }, [slug, setTenantSlug]);
+
+  const handleAdd = () => {
     if (!newDept.name.trim()) return;
     const dept: DepartmentConfig = {
       id: `dept-${Date.now()}`,
@@ -54,39 +54,31 @@ export default function DepartmentsPage() {
       keywords: [],
       escalationEnabled: false,
     };
-    setDepartments((prev) => [...prev, dept]);
+    addDepartment(dept);
     setNewDept({ name: "", contactEmail: "", contactPhone: "" });
     setShowAddForm(false);
     setEditingId(dept.id);
   };
 
-  const removeDepartment = (id: string) => {
-    setDepartments((prev) => prev.filter((d) => d.id !== id));
+  const handleRemove = (id: string) => {
+    removeDepartment(id);
     if (editingId === id) setEditingId(null);
   };
 
-  const addKeyword = (deptId: string) => {
+  const handleAddKeyword = (deptId: string) => {
     if (!newKeyword.trim()) return;
-    setDepartments((prev) =>
-      prev.map((d) =>
-        d.id === deptId ? { ...d, keywords: [...d.keywords, newKeyword.trim().toLowerCase()] } : d
-      )
-    );
+    const dept = departments.find((d) => d.id === deptId);
+    if (dept) {
+      updateDepartment(deptId, { keywords: [...dept.keywords, newKeyword.trim().toLowerCase()] });
+    }
     setNewKeyword("");
   };
 
-  const removeKeyword = (deptId: string, keyword: string) => {
-    setDepartments((prev) =>
-      prev.map((d) =>
-        d.id === deptId ? { ...d, keywords: d.keywords.filter((k) => k !== keyword) } : d
-      )
-    );
-  };
-
-  const updateField = (deptId: string, field: keyof DepartmentConfig, value: string | boolean) => {
-    setDepartments((prev) =>
-      prev.map((d) => (d.id === deptId ? { ...d, [field]: value } : d))
-    );
+  const handleRemoveKeyword = (deptId: string, keyword: string) => {
+    const dept = departments.find((d) => d.id === deptId);
+    if (dept) {
+      updateDepartment(deptId, { keywords: dept.keywords.filter((k) => k !== keyword) });
+    }
   };
 
   return (
@@ -108,7 +100,6 @@ export default function DepartmentsPage() {
         </Button>
       </HStack>
 
-      {/* Add Department Form */}
       {showAddForm && (
         <Box bg="white" border="1px solid" borderColor="blue.200" borderRadius="lg" p={5} mb={4}>
           <Text fontWeight="600" fontSize="sm" color="gray.700" mb={3}>New Department</Text>
@@ -118,7 +109,7 @@ export default function DepartmentsPage() {
               placeholder="Department name"
               value={newDept.name}
               onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
-              onKeyDown={(e) => e.key === "Enter" && addDepartment()}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
             <HStack>
               <Input
@@ -136,7 +127,7 @@ export default function DepartmentsPage() {
             </HStack>
             <HStack justify="flex-end">
               <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
-              <Button size="sm" colorScheme="blue" onClick={addDepartment}>Create</Button>
+              <Button size="sm" colorScheme="blue" onClick={handleAdd}>Create</Button>
             </HStack>
           </VStack>
         </Box>
@@ -156,7 +147,7 @@ export default function DepartmentsPage() {
           >
             <Icon as={FiUsers} boxSize={10} mb={3} />
             <Text fontSize="sm" fontWeight="500" color="gray.500">No departments yet</Text>
-            <Text fontSize="xs" color="gray.400" mt={1}>Click "Add Department" to get started</Text>
+            <Text fontSize="xs" color="gray.400" mt={1}>Click &quot;Add Department&quot; to get started</Text>
           </Flex>
         )}
         {departments.map((dept) => {
@@ -171,17 +162,9 @@ export default function DepartmentsPage() {
               overflow="hidden"
               transition="all 0.15s"
             >
-              {/* Department Header */}
               <Flex px={5} py={4} align="center" justify="space-between">
                 <HStack spacing={3}>
-                  <Flex
-                    w={8}
-                    h={8}
-                    bg="blue.50"
-                    borderRadius="md"
-                    align="center"
-                    justify="center"
-                  >
+                  <Flex w={8} h={8} bg="blue.50" borderRadius="md" align="center" justify="center">
                     <Icon as={FiUsers} color="blue.500" boxSize={4} />
                   </Flex>
                   <Box>
@@ -189,20 +172,17 @@ export default function DepartmentsPage() {
                     <HStack spacing={3} fontSize="xs" color="gray.400">
                       <HStack spacing={1}>
                         <Icon as={FiMail} boxSize={3} />
-                        <Text>{dept.contactEmail}</Text>
+                        <Text>{dept.contactEmail || "—"}</Text>
                       </HStack>
                       <HStack spacing={1}>
                         <Icon as={FiPhone} boxSize={3} />
-                        <Text>{dept.contactPhone}</Text>
+                        <Text>{dept.contactPhone || "—"}</Text>
                       </HStack>
                     </HStack>
                   </Box>
                 </HStack>
                 <HStack spacing={2}>
-                  <Badge
-                    colorScheme={dept.escalationEnabled ? "green" : "gray"}
-                    fontSize="10px"
-                  >
+                  <Badge colorScheme={dept.escalationEnabled ? "green" : "gray"} fontSize="10px">
                     {dept.escalationEnabled ? "Escalation On" : "Escalation Off"}
                   </Badge>
                   <IconButton
@@ -219,18 +199,15 @@ export default function DepartmentsPage() {
                     variant="ghost"
                     color="gray.400"
                     _hover={{ color: "red.500" }}
-                    onClick={() => removeDepartment(dept.id)}
+                    onClick={() => handleRemove(dept.id)}
                   />
                 </HStack>
               </Flex>
 
-              {/* Keywords */}
               <Box px={5} pb={4}>
                 <HStack spacing={1} mb={2}>
                   <Icon as={FiTag} boxSize={3} color="gray.400" />
-                  <Text fontSize="xs" fontWeight="500" color="gray.500">
-                    Routing Keywords
-                  </Text>
+                  <Text fontSize="xs" fontWeight="500" color="gray.500">Routing Keywords</Text>
                 </HStack>
                 <Flex gap={2} flexWrap="wrap">
                   {dept.keywords.map((kw) => (
@@ -253,7 +230,7 @@ export default function DepartmentsPage() {
                           boxSize={3}
                           cursor="pointer"
                           _hover={{ color: "red.500" }}
-                          onClick={() => removeKeyword(dept.id, kw)}
+                          onClick={() => handleRemoveKeyword(dept.id, kw)}
                         />
                       )}
                     </Badge>
@@ -261,7 +238,6 @@ export default function DepartmentsPage() {
                 </Flex>
               </Box>
 
-              {/* Editing Panel */}
               {isEditing && (
                 <Box px={5} pb={4} pt={2} borderTop="1px solid" borderColor="gray.100">
                   <VStack spacing={3} align="stretch">
@@ -271,9 +247,9 @@ export default function DepartmentsPage() {
                         placeholder="Add keyword..."
                         value={newKeyword}
                         onChange={(e) => setNewKeyword(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && addKeyword(dept.id)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddKeyword(dept.id)}
                       />
-                      <Button size="sm" onClick={() => addKeyword(dept.id)} leftIcon={<Icon as={FiPlus} />}>
+                      <Button size="sm" onClick={() => handleAddKeyword(dept.id)} leftIcon={<Icon as={FiPlus} />}>
                         Add
                       </Button>
                     </HStack>
@@ -282,20 +258,20 @@ export default function DepartmentsPage() {
                         size="sm"
                         placeholder="Email"
                         value={dept.contactEmail}
-                        onChange={(e) => updateField(dept.id, "contactEmail", e.target.value)}
+                        onChange={(e) => updateDepartment(dept.id, { contactEmail: e.target.value })}
                       />
                       <Input
                         size="sm"
                         placeholder="Phone"
                         value={dept.contactPhone}
-                        onChange={(e) => updateField(dept.id, "contactPhone", e.target.value)}
+                        onChange={(e) => updateDepartment(dept.id, { contactPhone: e.target.value })}
                       />
                     </HStack>
                     <Button
                       size="xs"
                       variant="ghost"
                       colorScheme={dept.escalationEnabled ? "red" : "green"}
-                      onClick={() => updateField(dept.id, "escalationEnabled", !dept.escalationEnabled)}
+                      onClick={() => updateDepartment(dept.id, { escalationEnabled: !dept.escalationEnabled })}
                     >
                       {dept.escalationEnabled ? "Disable Escalation" : "Enable Escalation"}
                     </Button>

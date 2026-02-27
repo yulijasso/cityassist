@@ -16,7 +16,7 @@ import {
   SignInButton,
   OrganizationSwitcher,
 } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useOrganization } from "@clerk/nextjs";
 import NextLink from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -27,6 +27,9 @@ import {
   FiBarChart2,
   FiSettings,
 } from "react-icons/fi";
+import { DepartmentProvider } from "@/lib/department-store";
+import { SettingsProvider } from "@/lib/settings-store";
+import ChatWidget from "@/components/ChatWidget";
 
 const NAV_ITEMS = [
   { label: "Knowledge Base", href: "/knowledge-base", icon: FiBook },
@@ -44,8 +47,9 @@ export default function DashboardLayout({
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
-  const { orgSlug, isLoaded, isSignedIn } = useAuth();
+  const { orgSlug, orgRole, isLoaded, isSignedIn } = useAuth();
   const slug = params.tenant_slug as string;
+  const roleLabel = orgRole === "org:admin" ? "Admin" : orgRole ? "Member" : "";
   const basePath = `/dashboard/${slug}`;
 
   // Redirect if org changes or slug doesn't match
@@ -78,13 +82,15 @@ export default function DashboardLayout({
             CityAssist
           </Text>
           <SignedIn>
+            <Text fontSize="xs" color="gray.500" mt={1}>
+              Organization
+            </Text>
             <OrganizationSwitcher
               hidePersonal
               hideSlug
               createOrganizationMode="navigation"
               createOrganizationUrl="/disabled"
-              organizationProfileMode="navigation"
-              organizationProfileUrl="/disabled"
+              organizationProfileMode="modal"
               appearance={{
                 elements: {
                   rootBox: { width: "100%" },
@@ -96,12 +102,25 @@ export default function DashboardLayout({
                   organizationSwitcherPopoverActionButton__createOrganization: {
                     display: "none",
                   },
-                  organizationSwitcherPopoverActionButton__manageOrganization: {
+                  organizationSwitcherPopoverActionButton__manageOrganization: {},
+                  organizationSwitcherTriggerIcon: {
+                    display: "none",
+                  },
+                  organizationPreviewMainIdentifier: {
+                    fontSize: "13px",
+                    fontWeight: "600",
+                  },
+                  organizationPreviewSecondaryIdentifier: {
                     display: "none",
                   },
                 },
               }}
             />
+            {roleLabel && (
+              <Text fontSize="11px" color="gray.400" mt={0.5}>
+                {roleLabel}
+              </Text>
+            )}
           </SignedIn>
           <SignedOut>
             <Text fontSize="xs" color="gray.400">
@@ -174,8 +193,13 @@ export default function DashboardLayout({
       </Box>
 
       {/* Main Content */}
-      <Box flex={1} overflow="auto" bg="gray.50">
-        {children}
+      <Box flex={1} overflow="auto" bg="white">
+        <DepartmentProvider>
+          <SettingsProvider>
+            {children}
+            <ChatWidget />
+          </SettingsProvider>
+        </DepartmentProvider>
       </Box>
     </Flex>
   );

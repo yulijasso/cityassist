@@ -11,23 +11,37 @@ import {
   HStack,
   Spinner,
   Icon,
+  Badge,
+  Image,
 } from "@chakra-ui/react";
 import { FiMessageCircle, FiX, FiSend } from "react-icons/fi";
 import { useConversations } from "@/lib/conversation-store";
+import { useSettings } from "@/lib/settings-store";
 import { Message } from "@/lib/types";
 
 export default function ChatWidget() {
+  const { settings } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentConvId, setCurrentConvId] = useState<string | null>(null);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { addConversation, addMessage } = useConversations();
+  const { addConversation, addMessage, updateConversation } = useConversations();
+
+  // Auto-open from settings
+  useEffect(() => {
+    if (settings.autoOpen) setIsOpen(true);
+  }, [settings.autoOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [localMessages]);
+
+  const color = settings.primaryColor || "#1a56db";
+  const title = settings.cityName || "CityAssist";
+  const welcome = settings.welcomeMessage || "Hi! Ask me anything about city services, permits, utilities, or departments.";
+  const maxH = settings.maxHeight ? `${settings.maxHeight}px` : "520px";
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -41,7 +55,6 @@ export default function ChatWidget() {
 
     let convId = currentConvId;
 
-    // Create new conversation if first message
     if (!convId) {
       convId = `conv-${Date.now()}`;
       setCurrentConvId(convId);
@@ -62,7 +75,6 @@ export default function ChatWidget() {
     setLoading(true);
 
     try {
-      // Build messages for API (just content + role)
       const apiMessages = [...localMessages, userMsg].map((m) => ({
         role: m.role,
         content: m.content,
@@ -88,6 +100,14 @@ export default function ChatWidget() {
 
       setLocalMessages((prev) => [...prev, assistantMsg]);
       addMessage(convId, assistantMsg);
+
+      // Auto-resolve if the chatbot fully answered the question
+      if (data.resolved && convId) {
+        updateConversation(convId, {
+          status: "resolved",
+          updatedAt: new Date().toISOString(),
+        });
+      }
     } catch {
       const errorMsg: Message = {
         id: `msg-${Date.now()}-err`,
@@ -114,9 +134,10 @@ export default function ChatWidget() {
         <Box
           position="fixed"
           bottom="90px"
-          right="24px"
+          right={settings.position === "bottom-left" ? undefined : "24px"}
+          left={settings.position === "bottom-left" ? "24px" : undefined}
           w="380px"
-          h="520px"
+          h={maxH}
           bg="white"
           borderRadius="xl"
           boxShadow="2xl"
@@ -129,28 +150,40 @@ export default function ChatWidget() {
         >
           {/* Header */}
           <Flex
-            bg="gray.900"
+            bg={color}
             color="white"
             px={4}
             py={3}
             align="center"
             justify="space-between"
           >
-            <Box>
-              <Text fontWeight="600" fontSize="sm">
-                CityAssist
-              </Text>
-              <Text fontSize="xs" color="gray.400">
-                Ask about city services
-              </Text>
-            </Box>
+            <HStack spacing={3}>
+              {settings.logoUrl && (
+                <Image
+                  src={settings.logoUrl}
+                  alt="Logo"
+                  boxSize="28px"
+                  borderRadius="md"
+                  objectFit="contain"
+                  bg="whiteAlpha.200"
+                />
+              )}
+              <Box>
+                <Text fontWeight="600" fontSize="sm">
+                  {title}
+                </Text>
+                <Text fontSize="xs" opacity={0.8}>
+                  Ask about city services
+                </Text>
+              </Box>
+            </HStack>
             <HStack spacing={1}>
               <IconButton
                 aria-label="New chat"
                 icon={<Icon as={FiMessageCircle} />}
                 size="xs"
                 variant="ghost"
-                color="gray.400"
+                color="whiteAlpha.700"
                 _hover={{ color: "white" }}
                 onClick={handleNewChat}
               />
@@ -159,7 +192,7 @@ export default function ChatWidget() {
                 icon={<Icon as={FiX} />}
                 size="xs"
                 variant="ghost"
-                color="gray.400"
+                color="whiteAlpha.700"
                 _hover={{ color: "white" }}
                 onClick={() => setIsOpen(false)}
               />
@@ -180,8 +213,7 @@ export default function ChatWidget() {
               <VStack spacing={2} py={8} color="gray.400">
                 <Icon as={FiMessageCircle} boxSize={8} />
                 <Text fontSize="sm" textAlign="center">
-                  Hi! Ask me anything about city services, permits, utilities, or
-                  departments.
+                  {welcome}
                 </Text>
               </VStack>
             )}
@@ -190,19 +222,25 @@ export default function ChatWidget() {
                 key={msg.id}
                 justify={msg.role === "user" ? "flex-end" : "flex-start"}
               >
-                <Box
-                  maxW="80%"
-                  bg={msg.role === "user" ? "blue.500" : "white"}
-                  color={msg.role === "user" ? "white" : "gray.800"}
-                  px={3}
-                  py={2}
-                  borderRadius="lg"
-                  fontSize="sm"
-                  boxShadow="sm"
-                  border={msg.role === "assistant" ? "1px solid" : "none"}
-                  borderColor="gray.200"
-                >
-                  <Text lineHeight="1.5">{msg.content}</Text>
+                <Box maxW="80%">
+                  <Box
+                    bg={msg.role === "user" ? color : "white"}
+                    color={msg.role === "user" ? "white" : "gray.800"}
+                    px={3}
+                    py={2}
+                    borderRadius="lg"
+                    fontSize="sm"
+                    boxShadow="sm"
+                    border={msg.role === "assistant" ? "1px solid" : "none"}
+                    borderColor="gray.200"
+                  >
+                    <Text lineHeight="1.5">{msg.content}</Text>
+                  </Box>
+                  {msg.role === "assistant" && settings.showDepartmentBadge && msg.department && (
+                    <Badge fontSize="10px" colorScheme="blue" variant="subtle" mt={1}>
+                      {msg.department}
+                    </Badge>
+                  )}
                 </Box>
               </Flex>
             ))}
@@ -217,7 +255,7 @@ export default function ChatWidget() {
                   border="1px solid"
                   borderColor="gray.200"
                 >
-                  <Spinner size="xs" color="blue.500" />
+                  <Spinner size="xs" color={color} />
                   <Text fontSize="sm" color="gray.500">
                     Thinking...
                   </Text>
@@ -242,7 +280,9 @@ export default function ChatWidget() {
               aria-label="Send"
               icon={<Icon as={FiSend} />}
               size="sm"
-              colorScheme="blue"
+              bg={color}
+              color="white"
+              _hover={{ opacity: 0.9 }}
               borderRadius="full"
               onClick={handleSend}
               isLoading={loading}
@@ -257,9 +297,12 @@ export default function ChatWidget() {
         icon={<Icon as={isOpen ? FiX : FiMessageCircle} boxSize={5} />}
         position="fixed"
         bottom="24px"
-        right="24px"
+        right={settings.position === "bottom-left" ? undefined : "24px"}
+        left={settings.position === "bottom-left" ? "24px" : undefined}
         size="lg"
-        colorScheme="blue"
+        bg={color}
+        color="white"
+        _hover={{ opacity: 0.9 }}
         borderRadius="full"
         boxShadow="lg"
         onClick={() => setIsOpen(!isOpen)}

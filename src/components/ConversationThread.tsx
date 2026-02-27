@@ -131,15 +131,6 @@ export default function ConversationThread({ conversation, hideHeader }: Props) 
                         {msg.department}
                       </Badge>
                     )}
-                    {msg.confidence !== undefined && (
-                      <Badge
-                        fontSize="10px"
-                        colorScheme={msg.confidence >= 0.78 ? "green" : "orange"}
-                        variant="subtle"
-                      >
-                        Confidence: {(msg.confidence * 100).toFixed(0)}%
-                      </Badge>
-                    )}
                   </HStack>
 
                   {/* Sources */}

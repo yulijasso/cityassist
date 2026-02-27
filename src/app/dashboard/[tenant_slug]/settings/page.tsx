@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Heading,
@@ -11,37 +11,30 @@ import {
   Button,
   Input,
   Flex,
-  Divider,
-  Badge,
   Switch,
   FormControl,
   FormLabel,
 } from "@chakra-ui/react";
 import {
-  FiSettings,
-  FiCopy,
   FiEye,
   FiEyeOff,
-  FiRefreshCw,
+  FiCopy,
 } from "react-icons/fi";
+import { useParams } from "next/navigation";
+import { useSettings } from "@/lib/settings-store";
 
 export default function SettingsPage() {
+  const params = useParams();
+  const slug = params.tenant_slug as string;
+  const { settings, updateSettings, setTenantSlug } = useSettings();
+
   const [showKey, setShowKey] = useState(false);
   const [apiKey] = useState("");
-  const [branding, setBranding] = useState({
-    cityName: "",
-    primaryColor: "#1a56db",
-    welcomeMessage: "",
-    logoUrl: "",
-  });
-  const [widgetConfig, setWidgetConfig] = useState({
-    position: "bottom-right",
-    autoOpen: false,
-    showDepartmentBadge: true,
-    showConfidence: false,
-    maxHeight: "520",
-  });
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setTenantSlug(slug);
+  }, [slug, setTenantSlug]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(apiKey);
@@ -49,7 +42,7 @@ export default function SettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const embedSnippet = `<script src="https://cdn.cityassist.ai/widget.js" data-api-key="${apiKey}" data-color="${branding.primaryColor}"></script>`;
+  const embedSnippet = `<script src="https://cdn.cityassist.ai/widget.js" data-api-key="${apiKey}" data-color="${settings.primaryColor}"></script>`;
 
   return (
     <Box p={8} maxW="100%">
@@ -90,24 +83,26 @@ export default function SettingsPage() {
           <VStack spacing={3} align="stretch">
             <Field
               label="City Name"
-              value={branding.cityName}
-              onChange={(v) => setBranding({ ...branding, cityName: v })}
+              value={settings.cityName}
+              onChange={(v) => updateSettings({ cityName: v })}
+              placeholder="e.g. City of Austin"
             />
             <Field
               label="Primary Color"
-              value={branding.primaryColor}
-              onChange={(v) => setBranding({ ...branding, primaryColor: v })}
+              value={settings.primaryColor}
+              onChange={(v) => updateSettings({ primaryColor: v })}
               type="color"
             />
             <Field
               label="Welcome Message"
-              value={branding.welcomeMessage}
-              onChange={(v) => setBranding({ ...branding, welcomeMessage: v })}
+              value={settings.welcomeMessage}
+              onChange={(v) => updateSettings({ welcomeMessage: v })}
+              placeholder="e.g. Hi! Ask me anything about city services."
             />
             <Field
               label="Logo URL"
-              value={branding.logoUrl}
-              onChange={(v) => setBranding({ ...branding, logoUrl: v })}
+              value={settings.logoUrl}
+              onChange={(v) => updateSettings({ logoUrl: v })}
               placeholder="https://..."
             />
           </VStack>
@@ -121,24 +116,16 @@ export default function SettingsPage() {
               <FormLabel fontSize="sm" color="gray.600" mb={0}>Auto-open widget</FormLabel>
               <Switch
                 size="sm"
-                isChecked={widgetConfig.autoOpen}
-                onChange={() => setWidgetConfig({ ...widgetConfig, autoOpen: !widgetConfig.autoOpen })}
+                isChecked={settings.autoOpen}
+                onChange={() => updateSettings({ autoOpen: !settings.autoOpen })}
               />
             </FormControl>
             <FormControl display="flex" alignItems="center" justifyContent="space-between">
               <FormLabel fontSize="sm" color="gray.600" mb={0}>Show department badge</FormLabel>
               <Switch
                 size="sm"
-                isChecked={widgetConfig.showDepartmentBadge}
-                onChange={() => setWidgetConfig({ ...widgetConfig, showDepartmentBadge: !widgetConfig.showDepartmentBadge })}
-              />
-            </FormControl>
-            <FormControl display="flex" alignItems="center" justifyContent="space-between">
-              <FormLabel fontSize="sm" color="gray.600" mb={0}>Show confidence score</FormLabel>
-              <Switch
-                size="sm"
-                isChecked={widgetConfig.showConfidence}
-                onChange={() => setWidgetConfig({ ...widgetConfig, showConfidence: !widgetConfig.showConfidence })}
+                isChecked={settings.showDepartmentBadge}
+                onChange={() => updateSettings({ showDepartmentBadge: !settings.showDepartmentBadge })}
               />
             </FormControl>
           </VStack>

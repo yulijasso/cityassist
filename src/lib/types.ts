@@ -38,3 +38,12 @@ export const INTENT_LABELS: Record<string, string> = {
 };
 
 export type Department = (typeof DEPARTMENTS)[number];
+
+export interface DepartmentConfig {
+  id: string;
+  name: string;
+  contactEmail: string;
+  contactPhone: string;
+  keywords: string[];
+  escalationEnabled: boolean;
+}
