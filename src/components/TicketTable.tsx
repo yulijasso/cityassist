@@ -24,7 +24,7 @@ import {
   MenuList,
   MenuItem,
 } from "@chakra-ui/react";
-import { FiChevronLeft, FiChevronRight, FiInbox, FiSearch, FiClock } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight, FiInbox, FiSearch } from "react-icons/fi";
 import { Conversation, INTENT_LABELS } from "@/lib/types";
 import { useRef, useState, useEffect } from "react";
 
@@ -120,12 +120,6 @@ export default function TicketTable({
     } else {
       onSelectionChange([...selectedIds, id]);
     }
-  };
-
-  const isOverdue = (conv: Conversation) => {
-    if (conv.status === "resolved") return false;
-    const openMs = Date.now() - new Date(conv.startedAt).getTime();
-    return openMs > 24 * 60 * 60 * 1000;
   };
 
   const getPageNumbers = () => {
@@ -262,7 +256,6 @@ export default function TicketTable({
                 const isChecked = selectedIds.includes(conv.id);
                 const priority = conv.priority || "normal";
                 const pCfg = PRIORITY_CONFIG[priority];
-                const overdue = isOverdue(conv);
                 return (
                   <Tr
                     key={conv.id}
@@ -335,12 +328,9 @@ export default function TicketTable({
                       )}
                     </Td>
                     <Td py={1} px={3} borderBottom="1px solid" borderColor="gray.100" textAlign="right">
-                      <HStack spacing={1} justify="flex-end">
-                        {overdue && <Icon as={FiClock} boxSize={3} color="red.400" />}
-                        <Text fontSize="12px" color={overdue ? "red.400" : "gray.400"}>
-                          {formatTime(conv.updatedAt)}
-                        </Text>
-                      </HStack>
+                      <Text fontSize="12px" color="gray.400">
+                        {formatTime(conv.updatedAt)}
+                      </Text>
                     </Td>
                   </Tr>
                 );

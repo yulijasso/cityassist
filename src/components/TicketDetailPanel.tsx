@@ -99,20 +99,6 @@ export default function TicketDetailPanel({
       d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  const getOpenDuration = () => {
-    if (conversation.status === "resolved") return null;
-    const ms = Date.now() - new Date(conversation.startedAt).getTime();
-    const mins = Math.floor(ms / 60000);
-    if (mins < 60) return `${mins}m`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ${mins % 60}m`;
-    const days = Math.floor(hrs / 24);
-    return `${days}d ${hrs % 24}h`;
-  };
-
-  const openDuration = getOpenDuration();
-  const isOverdue = conversation.status !== "resolved" && (Date.now() - new Date(conversation.startedAt).getTime()) > 24 * 60 * 60 * 1000;
-
   const deptNamesSet = new Set(departments.map((d) => d.name));
   if (conversation.department) deptNamesSet.add(conversation.department);
   const deptNames = Array.from(deptNamesSet).sort();
@@ -307,16 +293,6 @@ export default function TicketDetailPanel({
               <Text fontSize="12px" color="gray.600">{formatDate(conversation.updatedAt)}</Text>
             </HStack>
           </Box>
-
-          {/* Open Duration */}
-          {openDuration && (
-            <Box>
-              <FieldLabel>Open For</FieldLabel>
-              <Text fontSize="12px" color={isOverdue ? "red.500" : "gray.600"} mt={1} fontWeight={isOverdue ? "600" : "400"}>
-                {openDuration} {isOverdue && "(overdue)"}
-              </Text>
-            </Box>
-          )}
 
           {/* Messages count */}
           <Box>
