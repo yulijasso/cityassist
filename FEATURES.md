@@ -14,6 +14,19 @@ CityAssist is an AI-powered civic chatbot platform that helps city governments m
 - URL-based tenant isolation: `/dashboard/{org-slug}/...`
 - All data (conversations, departments, settings) is scoped per organization using localStorage keys
 
+## Login & Account Structure
+
+### Admin-Controlled Account Creation
+- Only admins can create accounts — there is no public self-registration
+- Admins create and manage all user accounts within their organization
+
+### Invite-Based User Onboarding
+- Admins invite users to the application via email invitations
+- Invited users receive an email with a link to join the organization
+- Upon accepting the invite, users are automatically onboarded into the correct organization workspace
+- Users cannot access the platform unless they have been explicitly invited by an admin
+
+
 ### Role-Based Access Control
 - **Admin**: Full access — can invite members, manage organization settings, delete accounts, and see all security options
 - **Member**: Dashboard access — can view and manage conversations, knowledge base, and departments, but cannot delete accounts
@@ -217,3 +230,6 @@ The AI automatically routes conversations to the correct department based on con
 | AI | Groq SDK with Llama 3.3-70b |
 | State | React Context + localStorage (per-tenant) |
 | Middleware | Next.js middleware for route protection |
+
+---
+
