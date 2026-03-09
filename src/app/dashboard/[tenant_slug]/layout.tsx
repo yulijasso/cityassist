@@ -30,7 +30,6 @@ import {
 import { DepartmentProvider } from "@/lib/department-store";
 import { SettingsProvider } from "@/lib/settings-store";
 import { MacroProvider } from "@/lib/macro-store";
-import ChatWidget from "@/components/ChatWidget";
 
 const NAV_ITEMS = [
   { label: "Knowledge Base", href: "/knowledge-base", icon: FiBook },
@@ -224,7 +223,6 @@ export default function DashboardLayout({
           <SettingsProvider>
             <MacroProvider>
               {children}
-              <ChatWidget />
             </MacroProvider>
           </SettingsProvider>
         </DepartmentProvider>
