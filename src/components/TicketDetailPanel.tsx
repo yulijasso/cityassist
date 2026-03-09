@@ -15,20 +15,13 @@ import {
   Input,
   Button,
   Textarea,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverBody,
 } from "@chakra-ui/react";
 import {
   FiArrowLeft,
   FiClock,
   FiUser,
   FiHash,
-  FiSend,
   FiZap,
-  FiMessageSquare,
-  FiPlus,
   FiTrash2,
 } from "react-icons/fi";
 import { Conversation, INTENT_LABELS, InternalNote } from "@/lib/types";
@@ -56,7 +49,7 @@ interface Props {
   onPriorityChange: (id: string, priority: string) => void;
   onAssigneeChange: (id: string, assignee: string) => void;
   onAddNote: (id: string, note: InternalNote) => void;
-  onAdminReply: (id: string, content: string) => void;
+  onRemoveNote: (id: string, noteId: string) => void;
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -75,7 +68,7 @@ export default function TicketDetailPanel({
   onPriorityChange,
   onAssigneeChange,
   onAddNote,
-  onAdminReply,
+  onRemoveNote,
 }: Props) {
   const { departments } = useDepartments();
   const { macros, addMacro, removeMacro } = useMacros();
@@ -85,7 +78,6 @@ export default function TicketDetailPanel({
   const currentDept = departments.find((d) => d.name === conversation.department);
   const deptMembers = currentDept?.members || [];
 
-  const [replyText, setReplyText] = useState("");
   const [noteText, setNoteText] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [showMacroManager, setShowMacroManager] = useState(false);
@@ -102,12 +94,6 @@ export default function TicketDetailPanel({
   const deptNamesSet = new Set(departments.map((d) => d.name));
   if (conversation.department) deptNamesSet.add(conversation.department);
   const deptNames = Array.from(deptNamesSet).sort();
-
-  const handleReply = () => {
-    if (!replyText.trim()) return;
-    onAdminReply(conversation.id, replyText.trim());
-    setReplyText("");
-  };
 
   const handleAddNote = () => {
     if (!noteText.trim()) return;
@@ -321,13 +307,52 @@ export default function TicketDetailPanel({
             {showNotes && (
               <VStack spacing={2} mt={2} align="stretch">
                 {notes.map((note) => (
-                  <Box key={note.id} bg="yellow.50" p={2} borderRadius="md" border="1px solid" borderColor="yellow.200">
-                    <Text fontSize="11px" color="gray.700" lineHeight="1.4">{note.content}</Text>
+                  <Box key={note.id} bg="yellow.50" p={2} borderRadius="md" border="1px solid" borderColor="yellow.200" position="relative" role="group">
+                    <Text fontSize="11px" color="gray.700" lineHeight="1.4" pr={5}>{note.content}</Text>
                     <Text fontSize="10px" color="gray.400" mt={1}>
                       {note.authorName} — {new Date(note.timestamp).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </Text>
+                    <IconButton
+                      aria-label="Delete note"
+                      icon={<Icon as={FiTrash2} boxSize={3} />}
+                      size="xs"
+                      variant="ghost"
+                      color="gray.300"
+                      _hover={{ color: "red.500" }}
+                      position="absolute"
+                      top={1}
+                      right={1}
+                      opacity={0}
+                      _groupHover={{ opacity: 1 }}
+                      onClick={() => onRemoveNote(conversation.id, note.id)}
+                    />
                   </Box>
                 ))}
+
+                {/* Macros for quick note insertion */}
+                {macros.length > 0 && (
+                  <Box>
+                    <HStack spacing={1} mb={1}>
+                      <Icon as={FiZap} boxSize={3} color="gray.400" />
+                      <Text fontSize="10px" fontWeight="600" color="gray.400" textTransform="uppercase">Quick insert</Text>
+                    </HStack>
+                    <HStack spacing={1} flexWrap="wrap">
+                      {macros.map((m) => (
+                        <Button
+                          key={m.id}
+                          size="xs"
+                          variant="outline"
+                          fontSize="10px"
+                          colorScheme="gray"
+                          onClick={() => { setNoteText(m.content); setShowNotes(true); }}
+                        >
+                          {m.title}
+                        </Button>
+                      ))}
+                    </HStack>
+                  </Box>
+                )}
+
                 <Textarea
                   size="xs"
                   placeholder="Add a note..."
@@ -340,6 +365,67 @@ export default function TicketDetailPanel({
                 <Button size="xs" colorScheme="yellow" variant="ghost" onClick={handleAddNote} isDisabled={!noteText.trim()}>
                   Add Note
                 </Button>
+              </VStack>
+            )}
+          </Box>
+
+          <Divider />
+
+          {/* Macro Manager */}
+          <Box>
+            <HStack justify="space-between" mb={2}>
+              <HStack spacing={1.5}>
+                <Icon as={FiZap} boxSize={3} color="gray.400" />
+                <FieldLabel>Macros</FieldLabel>
+              </HStack>
+              <Text
+                fontSize="10px"
+                color="gray.400"
+                cursor="pointer"
+                _hover={{ color: "gray.600" }}
+                onClick={() => setShowMacroManager(!showMacroManager)}
+              >
+                {showMacroManager ? "list" : "+ new"}
+              </Text>
+            </HStack>
+            {showMacroManager ? (
+              <VStack spacing={2} align="stretch">
+                <Input size="xs" placeholder="Title" value={newMacroTitle} onChange={(e) => setNewMacroTitle(e.target.value)} fontSize="xs" />
+                <Textarea size="xs" placeholder="Note template..." value={newMacroContent} onChange={(e) => setNewMacroContent(e.target.value)} fontSize="xs" rows={3} resize="none" />
+                <Button size="xs" colorScheme="blue" onClick={handleAddMacro} isDisabled={!newMacroTitle.trim() || !newMacroContent.trim()}>
+                  Save Macro
+                </Button>
+              </VStack>
+            ) : macros.length === 0 ? (
+              <Text fontSize="xs" color="gray.400" textAlign="center" py={3}>
+                No macros yet
+              </Text>
+            ) : (
+              <VStack spacing={1} align="stretch" maxH="200px" overflowY="auto">
+                {macros.map((m) => (
+                  <HStack
+                    key={m.id}
+                    px={2}
+                    py={1.5}
+                    borderRadius="md"
+                    _hover={{ bg: "gray.50" }}
+                    justify="space-between"
+                  >
+                    <Box>
+                      <Text fontSize="xs" fontWeight="500" color="gray.700">{m.title}</Text>
+                      <Text fontSize="10px" color="gray.400" noOfLines={1}>{m.content}</Text>
+                    </Box>
+                    <IconButton
+                      aria-label="Delete macro"
+                      icon={<Icon as={FiTrash2} boxSize={3} />}
+                      size="xs"
+                      variant="ghost"
+                      color="gray.300"
+                      _hover={{ color: "red.500" }}
+                      onClick={() => removeMacro(m.id)}
+                    />
+                  </HStack>
+                ))}
               </VStack>
             )}
           </Box>
@@ -373,94 +459,6 @@ export default function TicketDetailPanel({
           <ConversationThread conversation={conversation} hideHeader />
         </Box>
 
-        {/* Admin Reply Input */}
-        <Box borderTop="1px solid" borderColor="gray.200" bg="white" px={4} py={2}>
-          <HStack spacing={2}>
-            <Input
-              size="sm"
-              placeholder="Type a reply..."
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleReply()}
-              borderRadius="md"
-              fontSize="xs"
-              bg="gray.50"
-              flex={1}
-            />
-            {/* Macros Popover */}
-            <Popover placement="top-end">
-              <PopoverTrigger>
-                <IconButton
-                  aria-label="Macros"
-                  icon={<Icon as={FiZap} />}
-                  size="sm"
-                  variant="ghost"
-                  color="gray.500"
-                />
-              </PopoverTrigger>
-              <PopoverContent w="280px">
-                <PopoverBody p={2}>
-                  <HStack justify="space-between" mb={2}>
-                    <Text fontSize="xs" fontWeight="600" color="gray.600">Macros</Text>
-                    <Button size="xs" variant="ghost" leftIcon={<Icon as={showMacroManager ? FiMessageSquare : FiPlus} boxSize={3} />} onClick={() => setShowMacroManager(!showMacroManager)}>
-                      {showMacroManager ? "List" : "New"}
-                    </Button>
-                  </HStack>
-                  {showMacroManager ? (
-                    <VStack spacing={2} align="stretch">
-                      <Input size="xs" placeholder="Title" value={newMacroTitle} onChange={(e) => setNewMacroTitle(e.target.value)} fontSize="xs" />
-                      <Textarea size="xs" placeholder="Response content..." value={newMacroContent} onChange={(e) => setNewMacroContent(e.target.value)} fontSize="xs" rows={3} resize="none" />
-                      <Button size="xs" colorScheme="blue" onClick={handleAddMacro} isDisabled={!newMacroTitle.trim() || !newMacroContent.trim()}>
-                        Save Macro
-                      </Button>
-                    </VStack>
-                  ) : macros.length === 0 ? (
-                    <Text fontSize="xs" color="gray.400" textAlign="center" py={3}>
-                      No macros yet
-                    </Text>
-                  ) : (
-                    <VStack spacing={1} align="stretch" maxH="200px" overflowY="auto">
-                      {macros.map((m) => (
-                        <HStack
-                          key={m.id}
-                          px={2}
-                          py={1.5}
-                          borderRadius="md"
-                          cursor="pointer"
-                          _hover={{ bg: "gray.50" }}
-                          onClick={() => setReplyText(m.content)}
-                          justify="space-between"
-                        >
-                          <Box>
-                            <Text fontSize="xs" fontWeight="500" color="gray.700">{m.title}</Text>
-                            <Text fontSize="10px" color="gray.400" noOfLines={1}>{m.content}</Text>
-                          </Box>
-                          <IconButton
-                            aria-label="Delete macro"
-                            icon={<Icon as={FiTrash2} boxSize={3} />}
-                            size="xs"
-                            variant="ghost"
-                            color="gray.300"
-                            _hover={{ color: "red.500" }}
-                            onClick={(e) => { e.stopPropagation(); removeMacro(m.id); }}
-                          />
-                        </HStack>
-                      ))}
-                    </VStack>
-                  )}
-                </PopoverBody>
-              </PopoverContent>
-            </Popover>
-            <IconButton
-              aria-label="Send reply"
-              icon={<Icon as={FiSend} />}
-              size="sm"
-              colorScheme="blue"
-              onClick={handleReply}
-              isDisabled={!replyText.trim()}
-            />
-          </HStack>
-        </Box>
       </Box>
     </Flex>
   );

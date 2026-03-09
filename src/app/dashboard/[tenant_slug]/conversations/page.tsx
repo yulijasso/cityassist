@@ -26,6 +26,7 @@ export default function ConversationsPage() {
     bulkUpdateConversations,
     addMessage,
     addNote,
+    removeNote,
     setTenantSlug,
   } = useConversations();
   const { setTenantSlug: setDeptTenantSlug } = useDepartments();
@@ -207,7 +208,7 @@ export default function ConversationsPage() {
           onPriorityChange={handlePriorityChange}
           onAssigneeChange={handleAssigneeChange}
           onAddNote={handleAddNote}
-          onAdminReply={handleAdminReply}
+          onRemoveNote={removeNote}
         />
       ) : (
         <Flex flex={1} direction="column" overflow="hidden">

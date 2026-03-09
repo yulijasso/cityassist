@@ -10,6 +10,7 @@ interface ConversationStore {
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
   bulkUpdateConversations: (ids: string[], updates: Partial<Conversation>) => void;
   addNote: (conversationId: string, note: InternalNote) => void;
+  removeNote: (conversationId: string, noteId: string) => void;
   getConversation: (id: string) => Conversation | undefined;
   tenantSlug: string;
   setTenantSlug: (slug: string) => void;
@@ -110,6 +111,16 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
     );
   }, []);
 
+  const removeNote = useCallback((conversationId: string, noteId: string) => {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId
+          ? { ...c, notes: (c.notes || []).filter((n) => n.id !== noteId) }
+          : c
+      )
+    );
+  }, []);
+
   const getConversation = useCallback(
     (id: string) => conversations.find((c) => c.id === id),
     [conversations]
@@ -124,6 +135,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         updateConversation,
         bulkUpdateConversations,
         addNote,
+        removeNote,
         getConversation,
         tenantSlug,
         setTenantSlug,
